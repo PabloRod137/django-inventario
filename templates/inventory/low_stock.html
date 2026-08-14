@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Alertas de stock{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">Productos bajo el stock mínimo</h1>
+{% if products %}
+<table class="table">
+    <thead><tr><th>Nombre</th><th>SKU</th><th>Categoría</th><th>Proveedor</th><th>Stock actual</th><th>Mínimo</th><th></th></tr></thead>
+    <tbody>
+    {% for product in products %}
+        <tr class="table-low-stock">
+            <td>{{ product.name }}</td>
+            <td>{{ product.sku }}</td>
+            <td>{{ product.category|default:"—" }}</td>
+            <td>{{ product.supplier|default:"—" }}</td>
+            <td>{{ product.current_stock }}</td>
+            <td>{{ product.minimum_stock }}</td>
+            <td><a href="{% url 'product_detail' product.pk %}" class="btn btn-outline-primary btn-sm">Ver</a></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+    <p class="text-success">Todos los productos tienen stock suficiente.</p>
+{% endif %}
+{% endblock %}

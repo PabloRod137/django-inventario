@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Gráficos de movimientos{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">Movimientos de stock (últimos 30 días)</h1>
+<canvas id="movementsChart" height="100"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+    const labels = {{ labels_json|safe }};
+    const inData = {{ in_data_json|safe }};
+    const outData = {{ out_data_json|safe }};
+
+    new Chart(document.getElementById('movementsChart'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Entradas', data: inData, backgroundColor: '#198754' },
+                { label: 'Salidas', data: outData, backgroundColor: '#dc3545' },
+            ],
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } },
+        },
+    });
+</script>
+{% endblock %}

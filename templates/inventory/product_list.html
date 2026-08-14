@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Productos{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Productos</h1>
+    {% if user.is_authenticated %}
+        <a href="{% url 'product_create' %}" class="btn btn-primary btn-sm">Nuevo producto</a>
+    {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-auto">
+        <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Buscar por nombre">
+    </div>
+    <div class="col-auto">
+        <select name="category" class="form-select">
+            <option value="">Todas las categorías</option>
+            {% for category in categories %}
+                <option value="{{ category.pk }}" {% if selected_category|stringformat:"s" == category.pk|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="supplier" class="form-select">
+            <option value="">Todos los proveedores</option>
+            {% for supplier in suppliers %}
+                <option value="{{ supplier.pk }}" {% if selected_supplier|stringformat:"s" == supplier.pk|stringformat:"s" %}selected{% endif %}>{{ supplier.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-secondary">Filtrar</button>
+    </div>
+</form>
+
+<table class="table">
+    <thead>
+        <tr><th>Nombre</th><th>SKU</th><th>Categoría</th><th>Proveedor</th><th>Stock</th><th>Mínimo</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for product in products %}
+        <tr class="{% if product.is_below_minimum %}table-low-stock{% endif %}">
+            <td>{{ product.name }}</td>
+            <td>{{ product.sku }}</td>
+            <td>{{ product.category|default:"—" }}</td>
+            <td>{{ product.supplier|default:"—" }}</td>
+            <td>{{ product.current_stock }}{% if product.is_below_minimum %} <span class="badge bg-warning text-dark">bajo mínimo</span>{% endif %}</td>
+            <td>{{ product.minimum_stock }}</td>
+            <td><a href="{% url 'product_detail' product.pk %}" class="btn btn-outline-primary btn-sm">Ver</a></td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="7">No hay productos que coincidan con el filtro.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

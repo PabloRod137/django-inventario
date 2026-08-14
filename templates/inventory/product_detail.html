@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }}{% endblock %}
+{% block content %}
+<h1 class="h3">{{ product.name }}</h1>
+<p class="text-muted">SKU: {{ product.sku }}</p>
+<p>
+    Categoría: {{ product.category|default:"—" }} &middot;
+    Proveedor: {{ product.supplier|default:"—" }} &middot;
+    Precio: {{ product.unit_price }} €
+</p>
+<p>
+    <span class="badge {% if product.is_below_minimum %}bg-warning text-dark{% else %}bg-success{% endif %}">
+        Stock actual: {{ product.current_stock }} (mínimo: {{ product.minimum_stock }})
+    </span>
+</p>
+
+{% if user.is_authenticated %}
+<div class="card">
+    <div class="card-body">
+        <h2 class="h5">Registrar movimiento</h2>
+        <form method="post" action="{% url 'movement_create' product.pk %}" class="row g-2 align-items-end">
+            {% csrf_token %}
+            <div class="col-auto">
+                <label class="form-label">{{ movement_form.movement_type.label }}</label>
+                {{ movement_form.movement_type }}
+            </div>
+            <div class="col-auto">
+                <label class="form-label">{{ movement_form.quantity.label }}</label>
+                {{ movement_form.quantity }}
+            </div>
+            <div class="col-auto">
+                <label class="form-label">{{ movement_form.notes.label }}</label>
+                {{ movement_form.notes }}
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Registrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<h2 class="h5 mt-4">Historial de movimientos</h2>
+{% if movements %}
+<table class="table table-sm">
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Notas</th><th>Usuario</th></tr></thead>
+    <tbody>
+    {% for movement in movements %}
+        <tr>
+            <td>{{ movement.created_at|date:"d/m/Y H:i" }}</td>
+            <td>
+                {% if movement.movement_type == 'in' %}
+                    <span class="badge bg-success">Entrada</span>
+                {% else %}
+                    <span class="badge bg-danger">Salida</span>
+                {% endif %}
+            </td>
+            <td>{{ movement.quantity }}</td>
+            <td>{{ movement.notes }}</td>
+            <td>{{ movement.created_by|default:"—" }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+    <p>Sin movimientos registrados todavía.</p>
+{% endif %}
+{% endblock %}
