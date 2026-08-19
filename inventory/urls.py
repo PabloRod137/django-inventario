@@ -1,3 +1,7 @@
+"""
+URLs propias de la app "inventory", incluidas desde config/urls.py en la raíz del sitio.
+"""
+
 from django.urls import path
 
 from . import views

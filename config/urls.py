@@ -1,3 +1,8 @@
+"""
+URLs raíz del proyecto: admin, login/logout (vistas genéricas de Django) y
+las rutas propias de la app "inventory", incluidas en bloque.
+"""
+
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path

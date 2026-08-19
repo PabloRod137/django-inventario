@@ -1,3 +1,6 @@
+{# Ficha del producto: datos, formulario de movimiento e historial. El   #}
+{# stock que se ve aquí SIEMPRE viene de Product.current_stock, que solo #}
+{# cambia a través de StockMovement.save() (ver inventory/models.py).    #}
 {% extends 'base.html' %}
 {% block title %}{{ product.name }}{% endblock %}
 {% block content %}
