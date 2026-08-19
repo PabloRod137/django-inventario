@@ -79,6 +79,14 @@ python manage.py runserver
 
 Abre **http://127.0.0.1:8000/** en el navegador.
 
+### ✅ Tests automatizados
+
+La lógica de StockMovement (entradas/salidas, validación de stock suficiente, alerta de mínimo) tiene tests:
+
+```bash
+python manage.py test
+```
+
 ## 🔍 Cómo probarlo rápido
 
 1. Regístrate en `/registro/`.
