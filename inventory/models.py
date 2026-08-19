@@ -132,9 +132,12 @@ class StockMovement(models.Model):
         ver el comentario en save() sobre por qué hace falta una segunda
         comprobación ahí.
         """
-        if self.movement_type == self.MOVEMENT_OUT and self.product_id and self.quantity:
-            if self.quantity > self.product.current_stock:
-                raise ValidationError('No hay stock suficiente para esta salida.')
+        if (
+            self.movement_type == self.MOVEMENT_OUT
+            and self.product_id and self.quantity
+            and self.quantity > self.product.current_stock
+        ):
+            raise ValidationError('No hay stock suficiente para esta salida.')
 
     def save(self, *args, **kwargs):
         """
