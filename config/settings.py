@@ -9,8 +9,17 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+import dj_database_url
+
 # BASE_DIR es la carpeta raíz del proyecto (donde está manage.py).
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# ¿Estamos corriendo en Render? Render inyecta esta variable de entorno
+# automáticamente en todos sus servicios, así que nos sirve para saber si
+# estamos "en producción" sin tener que configurar nada a mano. En local
+# no existe, así que RENDER_EXTERNAL_HOSTNAME queda en None y el proyecto
+# se comporta igual que siempre (SQLite, DEBUG=True...).
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 
 
 # --- Seguridad básica ---
@@ -27,12 +36,18 @@ SECRET_KEY = os.environ.get(
 )
 
 # DEBUG=True: páginas de error detalladas y estáticos servidos sin
-# configuración extra. Cómodo para desarrollar. En producción, False.
-DEBUG = True
+# configuración extra. Cómodo para desarrollar. En Render forzamos
+# DEBUG=False automáticamente (nunca queremos páginas de error detalladas
+# de cara al público). En local, si no defines la variable DEBUG, sigue
+# en True.
+DEBUG = os.environ.get('DEBUG', 'True' if not RENDER_EXTERNAL_HOSTNAME else 'False') == 'True'
 
 # Con DEBUG=True, Django permite automáticamente localhost/127.0.0.1
-# aunque ALLOWED_HOSTS esté vacío.
+# aunque ALLOWED_HOSTS esté vacío. En Render añadimos el dominio público
+# que nos ha asignado (algo como "mi-app.onrender.com").
 ALLOWED_HOSTS = []
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # --- Aplicaciones instaladas ---
@@ -58,6 +73,15 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# WhiteNoise sirve los archivos estáticos (CSS, JS) directamente desde el
+# propio proceso de Django, sin necesitar un servidor aparte (nginx, un
+# CDN...) delante. Solo lo activamos en Render: en local, con DEBUG=True,
+# Django ya sirve los estáticos por su cuenta. Se inserta justo después
+# de SecurityMiddleware, la posición que recomienda la propia
+# documentación de WhiteNoise.
+if RENDER_EXTERNAL_HOSTNAME:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
@@ -81,14 +105,19 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Database
+# --- Base de datos ---
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
-
+#
+# En local seguimos usando SQLite. En Render, el servicio web no tiene
+# disco persistente en el plan gratuito, así que si existe la variable
+# de entorno DATABASE_URL (Render la inyecta sola al conectar una base
+# de datos PostgreSQL al servicio) la usamos en su lugar. dj_database_url
+# traduce esa URL a la sintaxis que espera Django.
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600,
+    )
 }
 
 
@@ -132,6 +161,49 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+# Carpeta donde `collectstatic` reúne todos los estáticos para poder
+# servirlos en producción. En local no hace falta tocarla.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        # El almacenamiento "manifest" de WhiteNoise añade un hash al
+        # nombre de cada archivo y los comprime, para que el navegador
+        # pueda cachearlos "para siempre" sin servir una versión vieja
+        # tras un despliegue nuevo. Necesita el manifiesto que genera
+        # `collectstatic`, así que solo se activa en Render (donde el
+        # build siempre lo ejecuta antes de arrancar); en local se usa
+        # el almacenamiento normal de Django.
+        'BACKEND': (
+            'whitenoise.storage.CompressedManifestStaticFilesStorage'
+            if RENDER_EXTERNAL_HOSTNAME
+            else 'django.contrib.staticfiles.storage.StaticFilesStorage'
+        ),
+    },
+}
+
+# --- Seguridad HTTPS (solo aplica cuando Render sirve el sitio) ---
+if RENDER_EXTERNAL_HOSTNAME:
+    # El navegador debe enviar el formulario de login/registro a la misma
+    # URL https://... por la que llegó; si no se declara aquí, Django
+    # rechaza el POST con un error de CSRF al estar detrás de un proxy.
+    CSRF_TRUSTED_ORIGINS = [f'https://{RENDER_EXTERNAL_HOSTNAME}']
+    # Render termina el HTTPS en su proxy y nos reenvía la petición por
+    # HTTP puro con esta cabecera indicando el protocolo original.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    # Ajustes que recomienda `manage.py check --deploy`: fuerzan HTTPS y
+    # marcan las cookies como "solo por conexión segura". Dentro de este
+    # `if` porque en local (sin HTTPS) romperían el login.
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # No activamos SECURE_HSTS_INCLUDE_SUBDOMAINS ni _PRELOAD porque el
+    # dominio es un subdominio compartido de onrender.com, no uno propio.
+    SECURE_HSTS_SECONDS = 3600
 
 # --- Autenticación ---
 LOGIN_URL = 'login'

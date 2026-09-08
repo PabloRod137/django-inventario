@@ -1,0 +1,43 @@
+# Blueprint de Render (https://render.com/docs/blueprint-spec).
+#
+# Con este archivo en la raíz del repo, Render puede crear todo lo
+# necesario de un solo golpe desde el dashboard ("New +" -> "Blueprint"):
+# el servicio web y la base de datos PostgreSQL, ya conectados entre sí.
+#
+# Variables marcadas con "sync: false" NO se guardan en este archivo (ni
+# por tanto en el repositorio público): Render las pide aparte, la
+# primera vez, desde su propio dashboard. Es la forma de no subir
+# contraseñas ni secretos a GitHub.
+
+services:
+  - type: web
+    name: django-inventario
+    env: python
+    plan: free
+    buildCommand: >-
+      pip install -r requirements.txt &&
+      python manage.py collectstatic --noinput &&
+      python manage.py migrate &&
+      python manage.py ensure_superuser
+    startCommand: gunicorn config.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DJANGO_SECRET_KEY
+        generateValue: true  # Render genera una clave aleatoria segura sola
+      - key: DEBUG
+        value: "False"
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: django-inventario-db
+          property: connectionString
+
+databases:
+  - name: django-inventario-db
+    plan: free

@@ -4,6 +4,8 @@ Aplicación Django para controlar el stock de un catálogo de productos: qué en
 
 > **¿Qué resuelve exactamente?** El típico Excel de "entradas y salidas" que se acaba desincronizando de la realidad, pero llevado a una app donde el stock se recalcula solo a partir de su propio historial de movimientos, así que nunca puede quedar "mal cuadrado".
 
+🔗 **Demo en producción:** _pendiente de desplegar — ver la sección [Despliegue en producción (Render)](#️-despliegue-en-producción-render) más abajo_.
+
 ## 🧭 Índice
 
 - [¿Qué puedes hacer con esta app?](#-qué-puedes-hacer-con-esta-app)
@@ -12,6 +14,7 @@ Aplicación Django para controlar el stock de un catálogo de productos: qué en
 - [Ponerlo en marcha en tu máquina](#-ponerlo-en-marcha-en-tu-máquina)
 - [Cómo probarlo rápido](#-cómo-probarlo-rápido)
 - [Formato del CSV de importación](#-formato-del-csv-de-importación)
+- [Despliegue en producción (Render)](#️-despliegue-en-producción-render)
 - [Estructura del proyecto](#-estructura-del-proyecto)
 - [Decisiones de diseño (y sus límites)](#-decisiones-de-diseño-y-sus-límites)
 - [Posibles mejoras futuras](#-posibles-mejoras-futuras)
@@ -47,10 +50,13 @@ Esto, sin embargo, abre la puerta al problema clásico de la **condición de car
 | Pieza | Tecnología |
 |---|---|
 | Backend | Python 3.12 + Django 6.1 |
-| Base de datos | SQLite (desarrollo/demo; en producción, PostgreSQL o MySQL) |
+| Base de datos | SQLite en local · PostgreSQL en producción (misma configuración, cambia sola según el entorno) |
+| Servidor de aplicación | `runserver` en local · Gunicorn en producción |
+| Estáticos en producción | WhiteNoise (sirve CSS/JS sin necesitar nginx ni un CDN aparte) |
 | Frontend | Plantillas de Django + Bootstrap 5 (CDN) |
 | Gráficos | Chart.js (CDN, sin build ni npm) |
 | Autenticación | `django.contrib.auth` |
+| Despliegue | [Render](https://render.com) mediante `render.yaml` (blueprint) |
 
 ## 🚀 Ponerlo en marcha en tu máquina
 
@@ -108,6 +114,33 @@ P-002,Monitor 24 pulgadas,Monitores,DisplayCo,149.00,5,8
 - Si no existe, se **crea**, y si además trae `initial_stock`, se registra automáticamente como un movimiento de entrada (queda reflejado en su historial, no es un atajo que se salte el sistema de movimientos).
 - `category` y `supplier` se crean solos si no existían todavía; no hace falta darlos de alta a mano antes de importar.
 
+## ☁️ Despliegue en producción (Render)
+
+El proyecto está preparado para desplegarse en [Render](https://render.com) prácticamente sin tocar nada: el archivo [`render.yaml`](render.yaml) de la raíz describe toda la infraestructura que hace falta (el servicio web + una base de datos PostgreSQL), así que Render puede montarlo todo de un solo golpe.
+
+**Qué cambia entre local y producción** (todo controlado por variables de entorno, el código es el mismo):
+
+| | Local (`runserver`) | Producción (Render) |
+|---|---|---|
+| `DEBUG` | `True` | `False` |
+| Base de datos | SQLite (`db.sqlite3`) | PostgreSQL (variable `DATABASE_URL`, la conecta Render sola) |
+| Estáticos | los sirve `runserver` directamente | `collectstatic` + WhiteNoise, con nombres de archivo versionados para cachear bien |
+| Servidor | `manage.py runserver` | Gunicorn |
+| Cookies / HTTPS | sin restricciones (no hay HTTPS en local) | cookies solo por HTTPS, redirección forzada a HTTPS, HSTS |
+
+Todo ese "modo producción" se activa solo al detectar la variable `RENDER_EXTERNAL_HOSTNAME`, que Render inyecta automáticamente — no hay que configurar nada a mano para que el proyecto sepa en qué entorno está corriendo (ver los comentarios en `config/settings.py`).
+
+### Pasos para desplegar tu propia copia
+
+1. Crea una cuenta gratuita en [render.com](https://render.com) (se puede entrar directamente con GitHub).
+2. Desde el dashboard: **New +** → **Blueprint**, y selecciona este repositorio (`django-inventario`). Render detecta el `render.yaml` solo.
+3. Te pedirá rellenar las variables marcadas como "secretas" en el blueprint (no van en el repo, por seguridad):
+   - `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_EMAIL`, `DJANGO_SUPERUSER_PASSWORD` — con estos datos se crea automáticamente un superusuario en el primer despliegue (mira `inventory/management/commands/ensure_superuser.py`), así no hace falta entrar por SSH ni usar una consola para crear el admin a mano.
+4. Confirma y espera al build (instala dependencias, recopila estáticos, aplica las migraciones y crea el superusuario, en ese orden — es literalmente el `buildCommand` del `render.yaml`).
+5. Cuando termine, Render te da una URL pública del tipo `https://django-inventario-xxxx.onrender.com`. Con el superusuario que definiste en el paso 3 ya puedes entrar en `/admin/` y en la propia web.
+
+> 💡 En el plan gratuito, tanto el servicio web como la base de datos "se duermen" tras un rato de inactividad, así que la primera petición después de un tiempo sin uso puede tardar unos segundos de más en responder (el servidor tiene que "despertarse"). Es normal y no indica ningún fallo.
+
 ## 📁 Estructura del proyecto
 
 ```
@@ -117,8 +150,10 @@ inventory/              # la app: modelos, vistas, formularios, admin, urls
     views.py               # catálogo, ficha de producto, alertas, importación CSV, gráficos
     forms.py                 # formularios de registro, producto, movimiento e importación
     admin.py                   # configuración del panel de administración
+    management/commands/         # ensure_superuser.py, usado en el despliegue
 templates/             # plantillas HTML (base.html + una por vista)
 static/                # CSS propio
+render.yaml            # blueprint de despliegue en Render (servicio web + PostgreSQL)
 ```
 
 ## 🎯 Decisiones de diseño (y sus límites)
