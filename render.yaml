@@ -1,8 +1,16 @@
 # Blueprint de Render (https://render.com/docs/blueprint-spec).
 #
 # Con este archivo en la raíz del repo, Render puede crear todo lo
-# necesario de un solo golpe desde el dashboard ("New +" -> "Blueprint"):
-# el servicio web y la base de datos PostgreSQL, ya conectados entre sí.
+# necesario desde el dashboard ("New +" -> "Blueprint"): el servicio web.
+#
+# Nota sobre la base de datos: NO declaramos aquí una base de datos
+# PostgreSQL propia porque el plan gratuito de Render solo permite una
+# base de datos gratuita por cuenta, y ya está en uso por otro proyecto
+# del mismo autor (django-gestion-eventos). Sin la variable DATABASE_URL,
+# el proyecto usa SQLite (ver el 'default' de dj_database_url.config en
+# config/settings.py) — funciona perfectamente para una demo, con la
+# única salvedad de que el disco del plan gratuito no es persistente de
+# verdad entre reinicios del servicio.
 #
 # Variables marcadas con "sync: false" NO se guardan en este archivo (ni
 # por tanto en el repositorio público): Render las pide aparte, la
@@ -33,11 +41,3 @@ services:
         sync: false
       - key: DJANGO_SUPERUSER_PASSWORD
         sync: false
-      - key: DATABASE_URL
-        fromDatabase:
-          name: django-inventario-db
-          property: connectionString
-
-databases:
-  - name: django-inventario-db
-    plan: free

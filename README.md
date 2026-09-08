@@ -50,7 +50,7 @@ Esto, sin embargo, abre la puerta al problema clásico de la **condición de car
 | Pieza | Tecnología |
 |---|---|
 | Backend | Python 3.12 + Django 6.1 |
-| Base de datos | SQLite en local · PostgreSQL en producción (misma configuración, cambia sola según el entorno) |
+| Base de datos | SQLite (tanto en local como en esta demo — el proyecto soporta PostgreSQL en producción vía `DATABASE_URL` sin cambiar código, ver más abajo) |
 | Servidor de aplicación | `runserver` en local · Gunicorn en producción |
 | Estáticos en producción | WhiteNoise (sirve CSS/JS sin necesitar nginx ni un CDN aparte) |
 | Frontend | Plantillas de Django + Bootstrap 5 (CDN) |
@@ -116,19 +116,21 @@ P-002,Monitor 24 pulgadas,Monitores,DisplayCo,149.00,5,8
 
 ## ☁️ Despliegue en producción (Render)
 
-El proyecto está preparado para desplegarse en [Render](https://render.com) prácticamente sin tocar nada: el archivo [`render.yaml`](render.yaml) de la raíz describe toda la infraestructura que hace falta (el servicio web + una base de datos PostgreSQL), así que Render puede montarlo todo de un solo golpe.
+El proyecto está preparado para desplegarse en [Render](https://render.com) prácticamente sin tocar nada: el archivo [`render.yaml`](render.yaml) de la raíz describe la infraestructura que hace falta, así que Render puede montarla de un solo golpe.
 
 **Qué cambia entre local y producción** (todo controlado por variables de entorno, el código es el mismo):
 
 | | Local (`runserver`) | Producción (Render) |
 |---|---|---|
 | `DEBUG` | `True` | `False` |
-| Base de datos | SQLite (`db.sqlite3`) | PostgreSQL (variable `DATABASE_URL`, la conecta Render sola) |
+| Base de datos | SQLite (`db.sqlite3`) | SQLite también en esta demo¹ — pero soporta PostgreSQL sin cambiar código en cuanto se defina `DATABASE_URL` |
 | Estáticos | los sirve `runserver` directamente | `collectstatic` + WhiteNoise, con nombres de archivo versionados para cachear bien |
 | Servidor | `manage.py runserver` | Gunicorn |
 | Cookies / HTTPS | sin restricciones (no hay HTTPS en local) | cookies solo por HTTPS, redirección forzada a HTTPS, HSTS |
 
 Todo ese "modo producción" se activa solo al detectar la variable `RENDER_EXTERNAL_HOSTNAME`, que Render inyecta automáticamente — no hay que configurar nada a mano para que el proyecto sepa en qué entorno está corriendo (ver los comentarios en `config/settings.py`).
+
+> ¹ El código soporta PostgreSQL en producción vía `dj_database_url` (basta con definir `DATABASE_URL`, sin tocar ni una línea de `settings.py`). En esta demo en concreto se usa SQLite porque el plan gratuito de Render solo permite una base de datos PostgreSQL gratuita por cuenta, y ya está en uso por [otro proyecto del mismo autor](https://github.com/PabloRod137/django-gestion-eventos). Con SQLite en el plan gratuito el disco no es completamente persistente entre reinicios del servicio — perfectamente válido para una demo de evaluación, pero no para un uso en producción real con datos que deban conservarse siempre.
 
 ### Pasos para desplegar tu propia copia
 
