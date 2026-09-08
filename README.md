@@ -4,7 +4,7 @@ Aplicación Django para controlar el stock de un catálogo de productos: qué en
 
 > **¿Qué resuelve exactamente?** El típico Excel de "entradas y salidas" que se acaba desincronizando de la realidad, pero llevado a una app donde el stock se recalcula solo a partir de su propio historial de movimientos, así que nunca puede quedar "mal cuadrado".
 
-🔗 **Demo en producción:** _pendiente de desplegar — ver la sección [Despliegue en producción (Render)](#️-despliegue-en-producción-render) más abajo_.
+🔗 **Demo en producción:** **[django-inventario-bnio.onrender.com](https://django-inventario-bnio.onrender.com)**
 
 ## 🧭 Índice
 
